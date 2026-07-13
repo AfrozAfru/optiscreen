@@ -1,21 +1,15 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
-import { ConfidenceMeter } from "@/components/confidence-meter";
+import React, { useState } from "react";
 import type { PredictionResult } from "@/lib/api";
+import { FocusRingGauge } from "@/components/focus-ring-gauge";
 import {
-  Activity,
-  Brain,
-  CheckCircle2,
-  FileImage,
-  RefreshCw,
-  Stethoscope,
-  ShieldCheck,
   AlertTriangle,
-  CircleAlert,
+  CheckCircle2,
+  ChevronRight,
+  Eye,
+  RefreshCw,
+  Scan,
 } from "lucide-react";
 
 interface ResultsViewProps {
@@ -25,173 +19,201 @@ interface ResultsViewProps {
 }
 
 export function ResultsView({ result, uploadedImageUrl, onReset }: ResultsViewProps) {
+  const [viewMode, setViewMode] = useState<"original" | "gradcam">("gradcam");
+
   const isCataract = result.disease_detected === "Cataract";
+  const accentColor = isCataract ? "#F2A65A" : "#45D9C0";
+  const accentTextClass = isCataract ? "text-[#F2A65A]" : "text-[#45D9C0]";
+  const accentBorderClass = isCataract ? "border-[#F2A65A]/40" : "border-[#45D9C0]/40";
+  const accentBgSubtleClass = isCataract ? "bg-[#F2A65A]/10" : "bg-[#45D9C0]/10";
 
-  const severityConfig = {
-    None: { variant: "success" as const, icon: ShieldCheck, color: "text-clinical-emerald" },
-    Mild: { variant: "warning" as const, icon: AlertTriangle, color: "text-clinical-amber" },
-    Moderate: { variant: "warning" as const, icon: CircleAlert, color: "text-clinical-amber" },
-    Severe: { variant: "danger" as const, icon: CircleAlert, color: "text-clinical-red" },
-  };
-
-  const config = severityConfig[result.severity as keyof typeof severityConfig] || severityConfig.None;
-  const SeverityIcon = config.icon;
+  const heatmapSrc = `data:image/png;base64,${result.heatmap_base64}`;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 pb-8">
+      {/* Page Title Row */}
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Diagnostic Results</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            AI-powered analysis complete. Review findings below.
+          <h1 className="font-display text-3xl font-bold tracking-tight text-[#E8ECF1]">
+            Diagnostic Results
+          </h1>
+          <p className="mt-1 font-mono text-xs uppercase tracking-[0.2em] text-[#8B96A5]">
+            INSTRUMENT OUTPUT // SCAN ANALYSIS COMPLETE
           </p>
         </div>
-        <Button variant="outline" onClick={onReset} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
+        <button
+          onClick={onReset}
+          className="inline-flex items-center gap-2 rounded-md border border-[#232B36] bg-[#1A212B] px-4 py-2.5 font-mono text-xs uppercase tracking-widest text-[#E8ECF1] transition-colors hover:border-[#2E3742] hover:bg-[#232B36] focus:outline-none focus:ring-2 focus:ring-[#45D9C0]/50"
+        >
+          <RefreshCw className="h-3.5 w-3.5 text-[#8B96A5]" />
           Analyze Another
-        </Button>
+        </button>
       </div>
 
-      {/* Bento Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Cell 1: Image Comparison (spans 2 cols) */}
-        <Card className="md:col-span-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileImage className="h-4 w-4 text-primary" />
-              Image Analysis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Original Scan
-                </p>
-                <div className="overflow-hidden rounded-xl border border-border">
-                  <img
-                    src={uploadedImageUrl}
-                    alt="Original eye scan"
-                    className="aspect-square w-full object-cover"
-                  />
-                </div>
+      {/* Main Content: Two-Column Grid (3:2 ratio on desktop, collapses below 860px) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        {/* Left Column (3 cols) — Scan Viewer Card */}
+        <div className="flex flex-col rounded-xl border border-[#232B36] bg-[#12171F] p-5 shadow-lg lg:col-span-3">
+          {/* Viewer Header + Pill Toggle */}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.2em] text-[#8B96A5]">
+              <Scan className="h-4 w-4 text-[#8B96A5]" />
+              SCAN VIEWER
+            </div>
+
+            {/* Segmented Pill Toggle */}
+            <div className="flex rounded-lg border border-[#232B36] bg-[#090C10] p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode("original")}
+                className={`rounded-md px-3.5 py-1.5 font-mono text-xs uppercase tracking-wider transition-all ${
+                  viewMode === "original"
+                    ? "bg-[#1A212B] text-[#E8ECF1] shadow-sm border border-[#2E3742]"
+                    : "text-[#8B96A5] hover:text-[#E8ECF1]"
+                }`}
+              >
+                ORIGINAL
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("gradcam")}
+                className={`rounded-md px-3.5 py-1.5 font-mono text-xs uppercase tracking-wider transition-all ${
+                  viewMode === "gradcam"
+                    ? "bg-[#1A212B] text-[#E8ECF1] shadow-sm border border-[#2E3742]"
+                    : "text-[#8B96A5] hover:text-[#E8ECF1]"
+                }`}
+              >
+                GRAD-CAM
+              </button>
+            </div>
+          </div>
+
+          {/* Large Single Image Viewport */}
+          <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-[#232B36] bg-[#090C10]">
+            <img
+              src={viewMode === "original" ? uploadedImageUrl : heatmapSrc}
+              alt={viewMode === "original" ? "Original eye scan" : "Grad-CAM thermal heatmap"}
+              className="h-full w-full object-contain transition-opacity duration-300"
+            />
+
+            {/* Optical instrument overlay badge */}
+            <div className="absolute top-3 left-3 rounded border border-[#232B36] bg-[#090C10]/80 px-2.5 py-1 font-mono text-[10px] tracking-widest text-[#8B96A5] backdrop-blur-sm">
+              OPTICS VIEW: {viewMode === "original" ? "RAW SPECTRUM" : "GRAD-CAM ACTIVATION"}
+            </div>
+          </div>
+
+          {/* Horizontal Gradient Legend Bar (Visible when GRAD-CAM is active) */}
+          {viewMode === "gradcam" && (
+            <div className="mt-4 space-y-1.5 border-t border-[#232B36] pt-3">
+              <div className="flex justify-between font-mono text-[10px] tracking-[0.2em] text-[#8B96A5]">
+                <span>LOW ACTIVATION</span>
+                <span>HIGH ACTIVATION</span>
               </div>
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Grad-CAM Heatmap
-                </p>
-                <div className="overflow-hidden rounded-xl border border-border">
-                  <img
-                    src={`data:image/png;base64,${result.heatmap_base64}`}
-                    alt="Grad-CAM heatmap overlay"
-                    className="aspect-square w-full object-cover"
-                  />
-                </div>
+              <div className="h-2.5 w-full rounded-full bg-gradient-to-r from-blue-600 via-teal-400 via-amber-400 to-red-500" />
+            </div>
+          )}
+        </div>
+
+        {/* Right Column (2 cols) — Diagnosis Card */}
+        <div className="flex flex-col justify-between rounded-xl border border-[#232B36] bg-[#12171F] p-6 shadow-lg lg:col-span-2">
+          <div>
+            <div className="font-mono text-xs uppercase tracking-[0.2em] text-[#8B96A5]">
+              DIAGNOSIS
+            </div>
+
+            {/* Focus-Ring Gauge */}
+            <div className="my-2 flex justify-center">
+              <FocusRingGauge
+                confidence={result.confidence_score}
+                isCataract={isCataract}
+              />
+            </div>
+
+            {/* Diagnosis Display Type Label + Status Icon */}
+            <div className="mt-2 flex flex-col items-center text-center">
+              <div className="flex items-center gap-2.5">
+                {isCataract ? (
+                  <AlertTriangle className="h-6 w-6 text-[#F2A65A]" />
+                ) : (
+                  <CheckCircle2 className="h-6 w-6 text-[#45D9C0]" />
+                )}
+                <h2
+                  className="font-display text-2xl font-bold tracking-tight sm:text-3xl"
+                  style={{ color: accentColor }}
+                >
+                  {isCataract ? "Cataract Detected" : "Clear Lens"}
+                </h2>
+              </div>
+
+              {/* Severity Pill */}
+              <div
+                className={`mt-3 inline-flex items-center rounded-full border px-3.5 py-1 font-mono text-xs font-semibold uppercase tracking-widest ${accentTextClass} ${accentBorderClass} ${accentBgSubtleClass}`}
+              >
+                {isCataract ? `${result.severity.toUpperCase()} SEVERITY` : "HEALTHY READING"}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Cell 2: Confidence Meter (1 col) */}
-        <Card className="flex flex-col items-center justify-center">
-          <CardHeader className="pb-2 text-center">
-            <CardTitle className="flex items-center justify-center gap-2 text-base">
-              <Activity className="h-4 w-4 text-primary" />
-              Model Confidence
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex justify-center pb-6">
-            <ConfidenceMeter value={result.confidence_score} />
-          </CardContent>
-        </Card>
-
-        {/* Cell 3: Diagnosis Card (1 col) */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Stethoscope className="h-4 w-4 text-primary" />
-              Diagnosis
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                Condition Detected
-              </p>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-foreground">
-                  {result.disease_detected}
-                </span>
-                <Badge variant={isCataract ? "danger" : "success"}>
-                  {isCataract ? "Detected" : "Clear"}
-                </Badge>
-              </div>
+          {/* Technical Instrumentation Footer Readouts */}
+          <div className="mt-8 border-t border-[#232B36] pt-4 font-mono text-[11px] text-[#8B96A5]">
+            <div className="flex justify-between py-1">
+              <span>SCAN CLASSIFICATION</span>
+              <span className="text-[#E8ECF1]">{result.disease_detected}</span>
             </div>
-            <Separator />
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                Severity Level
-              </p>
-              <div className="flex items-center gap-2">
-                <SeverityIcon className={`h-5 w-5 ${config.color}`} />
-                <span className="text-lg font-semibold text-foreground">
-                  {result.severity}
-                </span>
-              </div>
+            <div className="flex justify-between py-1">
+              <span>MODEL CONFIDENCE</span>
+              <span className="text-[#E8ECF1]">
+                {(result.confidence_score * 100).toFixed(1)}%
+              </span>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Cell 4: AI Explanation (spans 2 cols) */}
-        <Card className="md:col-span-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Brain className="h-4 w-4 text-primary" />
-              AI Explanation
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {result.explanation}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Cell 5: Recommendations (spans full width on lg, 1 col on md) */}
-        <Card className="lg:col-span-3">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <CheckCircle2 className="h-4 w-4 text-clinical-emerald" />
-              Clinical Recommendations
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {result.recommendations.map((rec, index) => (
-                <li key={index} className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-clinical-emerald-light">
-                    <CheckCircle2 className="h-3 w-3 text-clinical-emerald" />
-                  </div>
-                  <span className="text-sm leading-relaxed text-muted-foreground">
-                    {rec}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      {/* Clinical Disclaimer */}
-      <div className="rounded-xl border border-border/60 bg-surface px-6 py-4">
-        <p className="text-xs text-muted-foreground/80">
-          <span className="font-semibold">Disclaimer:</span> This AI-generated analysis is for
-          clinical decision support purposes only. It does not constitute a medical diagnosis.
-          Always consult a qualified ophthalmologist for definitive assessment and treatment
-          recommendations.
-        </p>
+      {/* Second Two-Column Row: AI Explanation + Recommendations */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* AI Explanation Card */}
+        <div className="rounded-xl border border-[#232B36] bg-[#12171F] p-6 shadow-lg">
+          <div className="mb-3 font-mono text-xs uppercase tracking-[0.2em] text-[#8B96A5]">
+            AI EXPLANATION
+          </div>
+          <p className="font-sans text-sm leading-relaxed text-[#E8ECF1]/90">
+            {result.explanation ||
+              (isCataract
+                ? "The AI model has detected signs consistent with cataract formation. The analysis highlights significant lens opacity and light scattering across the crystalline lens."
+                : "The scan exhibits a clear crystalline lens structure without significant cortical, nuclear, or subcapsular opacification.")}
+          </p>
+        </div>
+
+        {/* Recommendations Card */}
+        <div className="rounded-xl border border-[#232B36] bg-[#12171F] p-6 shadow-lg">
+          <div className="mb-3 font-mono text-xs uppercase tracking-[0.2em] text-[#8B96A5]">
+            CLINICAL ACTION PLAN
+          </div>
+          <ul className="space-y-3 font-sans text-sm text-[#E8ECF1]/90">
+            {(result.recommendations && result.recommendations.length > 0
+              ? result.recommendations
+              : [
+                  "Schedule a comprehensive clinical evaluation with a licensed ophthalmologist.",
+                  "Perform slit-lamp biomicroscopy and visual acuity contrast testing.",
+                ]
+            ).map((item, idx) => (
+              <li key={idx} className="flex items-start gap-2.5">
+                <ChevronRight
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  style={{ color: accentColor }}
+                />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
+
+      {/* Footer Disclaimer */}
+      <footer className="pt-4 text-center font-mono text-[11px] tracking-wider text-[#5A6472]">
+        OPTISCREEN v1.0 // THIS IS AN AI-ASSISTED SCREENING INSTRUMENT, NOT A DIAGNOSTIC SUBSTITUTE FOR A LICENSED PROFESSIONAL.
+      </footer>
     </div>
   );
 }

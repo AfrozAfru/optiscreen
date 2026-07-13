@@ -55,16 +55,19 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Page header */}
+      {/* Page header */}
       {!result && (
-        <div>
+        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-clinical-indigo-light p-2.5">
-              <Stethoscope className="h-6 w-6 text-primary" />
+            <div className="rounded-lg border border-[#232B36] bg-[#1A212B] p-2.5">
+              <Stethoscope className="h-5 w-5 text-[#45D9C0]" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Cataract Screening</h1>
-              <p className="text-sm text-muted-foreground">
-                Upload a fundus or slit-lamp image for AI-powered analysis
+              <h1 className="font-display text-2xl font-bold tracking-tight text-[#E8ECF1]">
+                Cataract Screening Instrument
+              </h1>
+              <p className="font-mono text-xs uppercase tracking-[0.15em] text-[#8B96A5]">
+                OPTICAL SCAN INGESTION // CLINICAL AI MODULE
               </p>
             </div>
           </div>
@@ -79,22 +82,21 @@ export default function DashboardPage() {
           onReset={handleReset}
         />
       ) : (
-        <Card className="border-border/60 shadow-sm">
-          <CardHeader>
-            <CardTitle>Upload Eye Image</CardTitle>
-            <CardDescription>
-              Select a high-quality fundus photograph or slit-lamp image for analysis.
-              The AI model will detect potential cataract indicators.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <UploadZone
-              onFileSelect={handleFileSelect}
-              isUploading={isUploading}
-              error={error}
-            />
-          </CardContent>
-        </Card>
+        <div className="rounded-xl border border-[#232B36] bg-[#12171F] p-6 shadow-xl">
+          <div className="mb-4">
+            <h2 className="font-display text-lg font-semibold text-[#E8ECF1]">
+              Upload Eye Scan
+            </h2>
+            <p className="mt-1 font-sans text-sm text-[#8B96A5]">
+              Select a high-resolution fundus photograph or direct anterior slit-lamp image for instant deep learning analysis.
+            </p>
+          </div>
+          <UploadZone
+            onFileSelect={handleFileSelect}
+            isUploading={isUploading}
+            error={error}
+          />
+        </div>
       )}
     </div>
   );

@@ -108,10 +108,10 @@ export function UploadZone({
         className={cn(
           "relative flex min-h-[320px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 transition-all duration-300",
           isDragging
-            ? "border-primary bg-clinical-indigo-light scale-[1.01]"
-            : "border-border hover:border-primary/40 hover:bg-surface",
+            ? "border-[#45D9C0] bg-[#1A212B] scale-[1.01]"
+            : "border-[#232B36] bg-[#090C10] hover:border-[#2E3742] hover:bg-[#1A212B]/40",
           isUploading && "pointer-events-none opacity-70",
-          displayError && "border-destructive/40 bg-destructive/5"
+          displayError && "border-red-500/40 bg-red-500/5"
         )}
       >
         {/* Hidden file input */}
