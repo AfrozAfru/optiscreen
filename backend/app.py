@@ -41,13 +41,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Middleware
-cors_origins = os.getenv("CORS_ORIGINS", '["http://localhost:3000"]')
+# CORS Middleware — robustly allow frontend origins (Vercel, Localhost, custom domains)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=json.loads(cors_origins),
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
