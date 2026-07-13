@@ -21,9 +21,18 @@ from database import get_supabase, upload_image_to_storage, log_diagnostic
 
 load_dotenv()
 
-# Allowed image MIME types
-ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
-MAX_FILE_SIZE_MB = 10
+# Allowed image MIME types (including WhatsApp, mobile, and octet-stream variations)
+ALLOWED_TYPES = {
+    "image/jpeg",
+    "image/jpg",
+    "image/pjpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+    "application/octet-stream",
+}
+MAX_FILE_SIZE_MB = 15
 
 
 @asynccontextmanager
@@ -94,14 +103,12 @@ def predict(
     the cataract detection model, and returns a comprehensive diagnosis
     with Grad-CAM heatmap visualization.
     """
-    # 1. Validate file type
-    if file.content_type not in ALLOWED_TYPES:
+    # 1. Validate file type flexibly (accept mobile/WhatsApp image/* and octet-stream)
+    content_type = (file.content_type or "").lower()
+    if content_type and not (content_type in ALLOWED_TYPES or content_type.startswith("image/")):
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"Invalid file type '{file.content_type}'. "
-                f"Accepted: {', '.join(ALLOWED_TYPES)}"
-            ),
+            detail=f"Invalid file type '{file.content_type}'. Please upload an image file (JPEG, PNG, WEBP).",
         )
 
     # 2. Read file content

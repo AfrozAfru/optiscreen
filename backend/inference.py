@@ -6,10 +6,11 @@ overlays highlighting cortical/nuclear opacification indicators.
 """
 
 import base64
+import gc
 import io
 import math
 import os
-from PIL import Image
+from PIL import Image, ImageOps
 import numpy as np
 
 import torch
@@ -17,6 +18,13 @@ import torchvision.transforms as T
 from torchvision.models import resnet18
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
+
+# Restrict PyTorch CPU threads to prevent memory/thread pool exhaustion on cloud containers (Render 512MB/1GB)
+torch.set_num_threads(1)
+try:
+    torch.set_num_interop_threads(1)
+except Exception:
+    pass
 
 # Path to weights file
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "optiscreen_cataract.pth")
@@ -54,7 +62,8 @@ def preprocess_image(image_bytes: bytes) -> torch.Tensor:
     Returns:
         Preprocessed PyTorch tensor of shape (1, 3, 224, 224).
     """
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    raw_image = Image.open(io.BytesIO(image_bytes))
+    image = ImageOps.exif_transpose(raw_image).convert("RGB")
     tensor = _preprocess_transform(image).unsqueeze(0)
     return tensor
 
@@ -112,22 +121,27 @@ def generate_heatmap(image_bytes: bytes) -> str:
     model = get_model()
 
     # Load RGB float image [0, 1] for overlay display
-    img_pil = Image.open(io.BytesIO(image_bytes)).convert("RGB").resize((224, 224), Image.Resampling.LANCZOS)
+    raw_pil = Image.open(io.BytesIO(image_bytes))
+    img_pil = ImageOps.exif_transpose(raw_pil).convert("RGB").resize((224, 224), Image.Resampling.LANCZOS)
     rgb_img = np.array(img_pil, dtype=np.float32) / 255.0
 
-    # Input tensor
-    input_tensor = _preprocess_transform(img_pil).unsqueeze(0)
+    try:
+        # Hook GradCAM onto the final bottleneck block of ResNet-18 (layer4[-1])
+        target_layers = [model.layer4[-1]]
+        input_tensor = _preprocess_transform(img_pil).unsqueeze(0)
+        with GradCAM(model=model, target_layers=target_layers) as cam:
+            grayscale_cam = cam(input_tensor=input_tensor, targets=None)[0]
 
-    # Hook GradCAM onto the final bottleneck block of ResNet-18 (layer4[-1])
-    target_layers = [model.layer4[-1]]
-    with GradCAM(model=model, target_layers=target_layers) as cam:
-        grayscale_cam = cam(input_tensor=input_tensor, targets=None)[0]
-
-    # Overlay Grad-CAM colormap over the original RGB image
-    visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True)
+        # Overlay Grad-CAM colormap over the original RGB image
+        visualization = show_cam_on_image(rgb_img, grayscale_cam, use_rgb=True)
+        vis_pil = Image.fromarray(visualization)
+    except Exception:
+        # Fallback to base RGB image if GradCAM exhausts container memory on ultra-small instances
+        vis_pil = img_pil
+    finally:
+        gc.collect()
 
     # Encode composite image to base64 PNG
-    vis_pil = Image.fromarray(visualization)
     buffer = io.BytesIO()
     vis_pil.save(buffer, format="PNG", quality=95)
     buffer.seek(0)
