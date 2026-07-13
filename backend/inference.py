@@ -8,7 +8,6 @@ overlays highlighting cortical/nuclear opacification indicators.
 import base64
 import gc
 import io
-import math
 import os
 from PIL import Image, ImageOps
 import numpy as np
@@ -31,7 +30,7 @@ MODEL_PATH = os.path.join(os.path.dirname(__file__), "optiscreen_cataract.pth")
 
 # Class index mapping - VERIFY this matches how your training labels were encoded.
 # If your training pipeline used ImageFolder or similar, check the class_to_idx
-# mapping to confirm which index corresponds to which class.
+# mapping (printed during training) to confirm which index maps to which class.
 CATARACT_CLASS_IDX = 0
 NORMAL_CLASS_IDX = 1
 
@@ -90,10 +89,12 @@ def run_inference(image_tensor: torch.Tensor) -> dict:
 
     with torch.no_grad():
         logits = model(image_tensor)
-        # Compute activation logit difference between Cataract (class 0) and Normal (class 1)
-        # Calibrated against model prior logit anchor (-4.4)
-        logit_diff = float(logits[0, 0] - logits[0, 1])
-        cataract_prob = 1.0 / (1.0 + math.exp(-(logit_diff + 4.4) * 2.2))
+        # Plain softmax over the two class logits. No artificial offset or scaling -
+        # if predictions still look biased after this, the issue is upstream in
+        # training (class imbalance, label mapping, or preprocessing mismatch),
+        # not in this function. Do not reintroduce a manual calibration constant here.
+        probs = torch.softmax(logits, dim=1)[0]
+        cataract_prob = float(probs[CATARACT_CLASS_IDX])
 
     is_cataract = cataract_prob >= 0.5
     disease = "Cataract" if is_cataract else "Normal"
