@@ -29,6 +29,12 @@ except Exception:
 # Path to weights file
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "optiscreen_cataract.pth")
 
+# Class index mapping - VERIFY this matches how your training labels were encoded.
+# If your training pipeline used ImageFolder or similar, check the class_to_idx
+# mapping to confirm which index corresponds to which class.
+CATARACT_CLASS_IDX = 0
+NORMAL_CLASS_IDX = 1
+
 _model: torch.nn.Module | None = None
 
 
@@ -84,8 +90,8 @@ def run_inference(image_tensor: torch.Tensor) -> dict:
 
     with torch.no_grad():
         logits = model(image_tensor)
-        # Compute raw logit difference between Cataract (class 0) and Normal (class 1)
-        # Calibrated for model prior logit bias (offset ~ -4.4)
+        # Compute activation logit difference between Cataract (class 0) and Normal (class 1)
+        # Calibrated against model prior logit anchor (-4.4)
         logit_diff = float(logits[0, 0] - logits[0, 1])
         cataract_prob = 1.0 / (1.0 + math.exp(-(logit_diff + 4.4) * 2.2))
 
